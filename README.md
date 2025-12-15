@@ -276,11 +276,12 @@ RELEVANT POLICIES: [Retrieved from vector DB]
 
 ### 3. RAG Implementation
 
-Uses ChromaDB for semantic search:
+Uses keyword-based search for semantic matching (demo implementation):
 - **FAQs Collection**: Common loan-related questions and answers
 - **Policies Collection**: Bank policies for different loan types
-- **Semantic Search**: Finds relevant documents based on query meaning
+- **Keyword Matching**: Finds relevant documents based on query keywords
 - **Context Injection**: Top results injected into LLM prompt
+- **Production Note**: For production systems, use ChromaDB or similar vector databases with proper embeddings
 
 ## Sample Data
 
