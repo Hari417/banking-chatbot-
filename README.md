@@ -24,9 +24,10 @@ The system uses a **strict system prompt** and **structured templates** that inj
 - Provides contextual, personalized responses
 
 ### 📚 RAG (Retrieval-Augmented Generation)
-- Vector database (ChromaDB) for semantic search
+- Keyword-based semantic search for FAQs and policies (demo implementation)
 - Retrieves relevant FAQs and policy documents
 - Injects context into LLM prompts for accurate responses
+- **Note**: Production systems should use ChromaDB or similar vector databases with proper embeddings
 
 ### 🏦 Bank API Integration
 - Mock bank API client for account details
@@ -120,6 +121,8 @@ python app.py
 ```
 
 The server will start on `http://localhost:5000`
+
+**Note**: The system includes a demo mode that works without an OpenAI API key. When no API key is configured, it uses rule-based responses for demonstration. For production use, configure a valid OpenAI API key in the `.env` file.
 
 ### Running the Example
 
