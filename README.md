@@ -1,345 +1,142 @@
-# Banking Chatbot
+# Banking RAG Chatbot
 
-A banking support chatbot that helps existing customers manage their loans using LLMs, RAG (Retrieval-Augmented Generation), and internal APIs.
+A local-first, FAQ-only Retrieval-Augmented Generation chatbot for general banking
+questions. It answers from a loaded knowledge base of banking policies, products, fees,
+loans, interest rates, and procedures — using FAISS for local vector search and an
+OpenAI-compatible or Ollama LLM for generation.
 
-## Overview
+> **Prototype — Not for production.** See `docs/compliance/disclaimer.md`. FAQ/knowledge
+> system only; never transactional. No query-side PII protection, no structured audit
+> trail, no auth. Do not feed it real customer data.
 
-This is a backend service that orchestrates:
-- **LLM (Large Language Model)** - For natural language understanding and generation
-- **Vector Database** - For RAG to retrieve loan FAQs and policy documents
-- **Bank APIs** - To fetch account and loan details
+---
 
-Users can ask natural language questions like:
-- "What's my current EMI and can I prepay this month?"
-- "How much prepayment charges will I have to pay?"
-- "When is my next EMI due?"
+## What this is (and is not)
 
-The system uses a **strict system prompt** and **structured templates** that inject retrieved policy snippets and API outputs to provide personalized, accurate answers.
+- **In scope:** general banking FAQs, policies, products, fees, loans, eligibility,
+  procedures, interest rates, penalties, repayment policies.
+- **Out of scope (refused):** account balances, transactions, card operations, real
+  customer authentication, private customer data, any transactional banking.
+- **Local-first:** FAISS on disk, no PostgreSQL, no external vector DB.
+- **Two interfaces shipped in v1:** a CLI (`src/cli.py`) and a FastAPI REST API
+  (`src/api.py`). **No Streamlit UI** (see `docs/evaluation/known-limitations.md`).
 
-## Features
+## Quick start
 
-### 🤖 Natural Language Processing
-- Processes natural language queries about loans and EMIs
-- Validates query scope to ensure only loan-related questions are answered
-- Provides contextual, personalized responses
-
-### 📚 RAG (Retrieval-Augmented Generation)
-- Keyword-based semantic search for FAQs and policies (demo implementation)
-- Retrieves relevant FAQs and policy documents
-- Injects context into LLM prompts for accurate responses
-- **Note**: Production systems should use ChromaDB or similar vector databases with proper embeddings
-
-### 🏦 Bank API Integration
-- Mock bank API client for account details
-- Loan information retrieval
-- Prepayment calculations with charges
-
-### 🎯 Strict Prompt Engineering
-- System prompts with clear boundaries
-- Structured templates for consistency
-- Context injection (policies + API data)
-- Professional, accurate responses
-
-## Architecture
-
-```
-┌─────────────┐
-│   User      │
-│   Query     │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────────────────────────┐
-│      Banking Chatbot Service        │
-│  ┌─────────────────────────────┐   │
-│  │  Query Validation           │   │
-│  └────────────┬────────────────┘   │
-│               │                     │
-│  ┌────────────▼────────────┐       │
-│  │  Orchestration Layer    │       │
-│  │  ┌──────┐  ┌──────┐    │       │
-│  │  │ RAG  │  │ API  │    │       │
-│  │  └───┬──┘  └───┬──┘    │       │
-│  └──────┼─────────┼────────┘       │
-│         │         │                 │
-│  ┌──────▼──┐  ┌───▼────┐          │
-│  │ Vector  │  │ Bank   │          │
-│  │   DB    │  │  API   │          │
-│  └─────────┘  └────────┘          │
-│         │         │                 │
-│  ┌──────▼─────────▼────────┐      │
-│  │   Prompt Construction    │      │
-│  └────────────┬─────────────┘      │
-│               │                     │
-│  ┌────────────▼─────────────┐      │
-│  │    LLM (OpenAI GPT)      │      │
-│  └────────────┬─────────────┘      │
-│               │                     │
-│  ┌────────────▼─────────────┐      │
-│  │    Response Generation   │      │
-│  └──────────────────────────┘      │
-└─────────────────────────────────────┘
-```
-
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- pip
-
-### Setup
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/Hari417/banking-chatbot-.git
-cd banking-chatbot-
-```
-
-2. Install dependencies:
-```bash
+# 1. venv + deps (see docs/setup/installation.md)
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+export OPENAI_API_KEY="sk-..."          # or use Ollama — see config.yaml
+
+# 2. Smoke test (mock path, no key needed)
+python3 tests/verify.py                 # expect: ALL TESTS PASSED!
+
+# 3. (Optional) ingest documents — see docs/setup/document-ingestion.md
+#    Without ingestion, every query abstains with "no documents found".
+
+# 4. Run it
+python3 src/cli.py chat                 # interactive CLI
+python3 src/api.py                      # REST API on http://localhost:8000
 ```
 
-3. Configure environment (optional):
-Create a `.env` file:
-```env
-OPENAI_API_KEY=your-openai-api-key
-LLM_MODEL=gpt-3.5-turbo
-LLM_TEMPERATURE=0.1
-FLASK_PORT=5000
-```
-
-**Note**: The system includes a demo mode that works without an OpenAI API key for testing purposes.
-
-## Usage
-
-### Running the Service
-
-Start the Flask API server:
-```bash
-python app.py
-```
-
-The server will start on `http://localhost:5000`
-
-**Note**: The system includes a demo mode that works without an OpenAI API key. When no API key is configured, it uses rule-based responses for demonstration. For production use, configure a valid OpenAI API key in the `.env` file.
-
-### Running the Example
-
-To see a demonstration of the chatbot's capabilities:
-```bash
-python example.py
-```
-
-### API Endpoints
-
-#### 1. Chat Endpoint
-Process natural language queries:
+Example query via the API:
 
 ```bash
-POST /chat
-Content-Type: application/json
-
-{
-  "customer_id": "CUST001",
-  "query": "What's my current EMI and can I prepay this month?"
-}
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are your banking hours?"}'
 ```
 
-Response:
-```json
-{
-  "response": "Based on your loan details...",
-  "success": true,
-  "customer_id": "CUST001",
-  "query": "...",
-  "context_used": {
-    "faqs_count": 3,
-    "policies_count": 3
-  }
-}
+## Architecture (high level)
+
+```
+CLI / API  →  RAGWorkflow.run()  →  embed → retrieve (dense + sparse) → build context
+                                   → build prompt → LLM → validate grounding → abstain check → cite
+        Retrieval uses FAISS (IndexFlatIP) + optional BM25 (rank-bm25)
 ```
 
-#### 2. Prepayment Calculator
-Calculate prepayment with charges:
+For the full narrative, including divergences from the upstream `ARCHITECTURE.md`, see
+[`docs/architecture/overview.md`](docs/architecture/overview.md).
+
+## Tech stack
+
+| Layer | Choice | Swap path |
+|-------|--------|-----------|
+| LLM | OpenAI / OpenAI-compatible / Ollama (HTTP) | `llm.provider` in `config.yaml` |
+| Embeddings | `all-MiniLM-L6-v2` (local, 384d) or OpenAI API | `embedding.provider` |
+| Vector store | FAISS (`IndexFlatIP` / `IndexIVFFlat`) on local disk | — |
+| Retrieval | hybrid dense + optional BM25 (fused, normalized weighted) | — |
+| Workflow | single linear `RAGWorkflow` (LangGraph absent in v1) | — |
+| API | FastAPI | — |
+
+## Project structure
+
+```
+Banking/
+├── config.yaml              #.configuration
+├── requirements.txt
+├── sample_data.py           # sample FAQ/policy/product/loan data
+├── src/
+│   ├── banking_rag/         # core package
+│   │   ├── config.py llm.py embeddings.py chunking.py
+│   │   ├── vector_store.py retrieval.py rag_workflow.py ingestion.py
+│   ├── cli.py               # CLI interface
+│   └── api.py               # FastAPI REST API
+├── tests/                   # verify.py (mock smoke test) + test_rag.py
+└── docs/                    # full documentation (below)
+```
+
+## Documentation map
+
+| You want to… | Read |
+|--------------|------|
+| Understand the system | `docs/architecture/overview.md` |
+| Set it up | `docs/setup/prerequisites.md` → `installation.md` → `configuration.md` → `running-locally.md` |
+| Load documents | `docs/setup/document-ingestion.md` (note: the `/ingest` API is a stub) |
+| Use the API | `docs/api/overview.md` and per-endpoint docs under `docs/api/` |
+| Ask questions well | `docs/user-guide/asking-questions.md`, `understanding-citations.md` |
+| Know what it won't answer | `docs/user-guide/limitations-and-scope.md` |
+| Operate / maintain it | `docs/runbook/README.md` and runbooks under `docs/runbook/` |
+| Understand security/compliance posture | `docs/compliance/` (scope-enforcement, pii-handling, audit-trail, disclaimer) |
+| See v1's gaps honestly | `docs/evaluation/known-limitations.md` |
+| Standards (comments/logs/changes) | `docs/STYLE_GUIDE.md` |
+| Documentation index | `docs/DOCUMENTATION_OUTLINE.md` |
+
+## Security & limitations (summary)
+
+v1 enforces FAQ-only scope via the **system prompt** and a **post-hoc abstention phrase
+scan**, plus **ingestion-time PII rejection** (regex) for `ssn`/`credit_card`/
+`account_number`. The following are **declared in `config.yaml` but not implemented** and
+are accepted v1 limitations (full list in `docs/evaluation/known-limitations.md`):
+
+- No query-side PII detection or redaction.
+- No prompt-injection input filter.
+- No request rate limiting.
+- No structured/JSON audit log (`request_id`, event taxonomy).
+- Grounding validation is a lexical token-overlap heuristic, not semantic.
+- `/ingest` REST endpoint is a stub — use the Python ingestion pipeline.
+- Sessions are in-memory and not multi-turn; lost on restart.
+
+## Configuration
+
+Key `config.yaml` sections: `llm`, `embedding`, `vector_store`, `retrieval`, `security`,
+`chunking`, `session`, `features`. Every field is documented in
+`docs/setup/configuration.md`. Environment overrides: `OPENAI_API_KEY`,
+`BANKING_RAG_CONFIG`, `BANKING_RAG_MOCK`, `BANKING_RAG_API_HOST`, `BANKING_RAG_API_PORT`,
+`BANKING_RAG_DEBUG`.
+
+## Testing
 
 ```bash
-POST /prepayment/calculate
-Content-Type: application/json
-
-{
-  "customer_id": "CUST001",
-  "loan_id": "LOAN001",
-  "prepayment_amount": 100000
-}
+python3 tests/verify.py            # mock-path smoke test (no key, no model)
+python3 -m pytest tests/ -v         # full suite (needs pytest)
 ```
 
-#### 3. Customer Summary
-Get account and loan summary:
-
-```bash
-GET /customer/{customer_id}/summary
-```
-
-#### 4. Search FAQs
-Search loan FAQs semantically:
-
-```bash
-POST /search/faqs
-Content-Type: application/json
-
-{
-  "query": "What is EMI?",
-  "n_results": 3
-}
-```
-
-#### 5. Search Policies
-Search policy documents:
-
-```bash
-POST /search/policies
-Content-Type: application/json
-
-{
-  "query": "prepayment charges",
-  "n_results": 3
-}
-```
-
-### Testing the API
-
-Use the provided test script:
-```bash
-chmod +x test_api.sh
-./test_api.sh
-```
-
-## Project Structure
-
-```
-banking-chatbot-/
-├── app.py                  # Flask API server
-├── chatbot_service.py      # Main chatbot orchestration
-├── llm_service.py          # LLM integration (OpenAI)
-├── vector_db_service.py    # Vector DB for RAG (ChromaDB)
-├── bank_api_client.py      # Mock bank API client
-├── prompts.py              # Prompt templates and system prompts
-├── data.py                 # Sample FAQs and policy documents
-├── config.py               # Configuration settings
-├── requirements.txt        # Python dependencies
-├── example.py              # Example usage
-├── test_api.sh            # API test script
-└── README.md              # This file
-```
-
-## How It Works
-
-### 1. Query Processing Flow
-
-1. **Validation**: Query is validated to ensure it's within scope (loan-related)
-2. **Data Retrieval**: 
-   - Customer data fetched from bank API
-   - Relevant FAQs and policies retrieved from vector DB using semantic search
-3. **Prompt Construction**: Structured prompt created with:
-   - System prompt (strict rules and guidelines)
-   - Customer data (account, loans, EMI details)
-   - Retrieved context (FAQs and policies)
-   - User query
-4. **LLM Generation**: Prompt sent to LLM for response generation
-5. **Response**: Personalized, contextual answer returned to user
-
-### 2. Prompt Strategy
-
-#### System Prompt
-Contains strict rules:
-- Only answer loan-related questions
-- Never provide information about new accounts/loans
-- Use only provided context
-- Be professional and accurate
-- Never ask for sensitive information
-
-#### Structured Templates
-Inject data in organized sections:
-```
-=== CONTEXT INFORMATION ===
-CUSTOMER DATA: [Account and loan details]
-RELEVANT FAQs: [Retrieved from vector DB]
-RELEVANT POLICIES: [Retrieved from vector DB]
-
-=== USER QUERY ===
-[Natural language question]
-
-=== INSTRUCTIONS ===
-[Specific instructions for response format]
-```
-
-### 3. RAG Implementation
-
-Uses keyword-based search for semantic matching (demo implementation):
-- **FAQs Collection**: Common loan-related questions and answers
-- **Policies Collection**: Bank policies for different loan types
-- **Keyword Matching**: Finds relevant documents based on query keywords
-- **Context Injection**: Top results injected into LLM prompt
-- **Production Note**: For production systems, use ChromaDB or similar vector databases with proper embeddings
-
-## Sample Data
-
-The system includes mock data for demonstration:
-
-### Customers
-- **CUST001**: John Doe with 1 home loan
-- **CUST002**: Jane Smith with 1 personal loan and 1 car loan
-
-### FAQs
-- What is EMI?
-- How is EMI calculated?
-- Can I prepay my loan?
-- What are prepayment charges?
-- And more...
-
-### Policies
-- Home Loan Policy (prepayment, interest rates)
-- Personal Loan Policy (eligibility, prepayment)
-- Car Loan Policy (loan amount, tenure)
-- General Loan Policies (payments, charges)
-
-## Customization
-
-### Adding New FAQs/Policies
-Edit `data.py` to add new FAQs or policy documents. The vector database will automatically index them.
-
-### Changing LLM Provider
-Modify `llm_service.py` to integrate with different LLM providers (Anthropic, local models, etc.)
-
-### Integrating Real Bank APIs
-Replace the mock `BankAPIClient` in `bank_api_client.py` with actual API integration.
-
-## Security Considerations
-
-- Never commits API keys to repository
-- Validates query scope to prevent misuse
-- Does not ask for sensitive information (passwords, OTPs)
-- Mock data only for demonstration
-
-## Future Enhancements
-
-- [ ] Multi-turn conversation support with context memory
-- [ ] Support for multiple languages
-- [ ] Integration with real banking APIs
-- [ ] User authentication and authorization
-- [ ] Transaction history and analytics
-- [ ] Voice interface support
-- [ ] Advanced prepayment recommendations using ML
+> `tests/verify.py` hardcodes `/home/hari/Desktop/Banking/src` in `sys.path`; if you
+> cloned elsewhere, edit that line or run with `PYTHONPATH=src`. See `docs/setup/troubleshooting.md`.
 
 ## License
 
-MIT License
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
+MIT License — see `LICENSE` for details (no `LICENSE` file shipped in v1; the upstream
+README references one).

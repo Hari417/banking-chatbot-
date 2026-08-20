@@ -1,0 +1,88 @@
+# Banking RAG Chatbot Configuration
+# ================================
+
+# System Settings
+system:
+  debug: false
+  log_level: "INFO"
+  data_dir: "./data"
+  cache_dir: "./cache"
+
+# LLM Provider Configuration
+llm:
+  provider: "ollama"  # Options: openai, ollama, openai_compatible
+  model: "qwen3:4b"
+  
+  # OpenAI-compatible API settings
+  api_base: "https://api.openai.com/v1"
+  api_key_env: "OPENAI_API_KEY"
+  
+  # Ollama settings (for local LLM)
+  ollama_base_url: "http://localhost:11434"
+  ollama_model: "qwen3:4b"
+  
+  # Generation parameters
+  temperature: 0.7
+  max_tokens: 1000
+  timeout: 300
+
+# Embedding Model Configuration
+embedding:
+  model: "all-MiniLM-L6-v2"
+  dimensions: 384
+  provider: "local"  # Options: local, openai
+  api_base: "https://api.openai.com/v1/embeddings"
+  api_key_env: "OPENAI_API_KEY"
+  batch_size: 32
+  timeout: 60
+
+# Vector Store (FAISS) Configuration
+vector_store:
+  index_type: "IndexFlatIP"  # Options: IndexFlatIP, IndexIVFFlat
+  nlist: 100  # Number of cells for IVF
+  persist_path: "/home/hari/Desktop/Banking/data/index/faiss.index"
+  metadata_path: "/home/hari/Desktop/Banking/data/index/metadata.json"
+  registry_path: "/home/hari/Desktop/Banking/data/index/document_registry.json"
+
+# Retrieval Configuration
+retrieval:
+  dense_k: 10  # Number of dense results
+  sparse_k: 10  # Number of sparse (BM25) results
+  final_k: 5  # Number of final results after reranking
+  score_threshold: 0.5
+  rerank_enabled: true
+  rerank_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+# Security Configuration
+security:
+  rate_limit_enabled: true
+  rate_limit_requests: 10  # Requests per window
+  rate_limit_window: 60  # Seconds
+  pii_detection_enabled: true
+  input_guard_enabled: true
+  prompt_injection_check_enabled: true
+
+# Chunking Configuration
+chunking:
+  chunk_size: 512
+  chunk_overlap: 50
+  strategy: "recursive"  # Options: recursive, faq_preserved, table_aware
+
+# Presentation Configuration
+presentation:
+  streamlit_port: 8501
+  api_host: "0.0.0.0"
+  api_port: 8000
+  enable_api: true
+  enable_streamlit: true
+
+# Session Management
+session:
+  memory_limit: 100  # Max sessions in memory
+  ttl_minutes: 30
+  persistence: false  # Set true for SQLite persistence
+
+# Feature Flags
+features:
+  enable_transactions: false  # Always false - transactional features prohibited
+  enable_premium_reranker: false  # For v2 enhancements
