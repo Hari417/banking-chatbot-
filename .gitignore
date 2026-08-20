@@ -1,17 +1,13 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
 *.so
 .Python
-env/
-venv/
-ENV/
-build/
-develop-eggs/
+*.egg-info/
+*.egg
 dist/
-downloads/
-eggs/
+build/
 .eggs/
 lib/
 lib64/
@@ -19,11 +15,10 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
 .installed.cfg
-*.egg
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/
@@ -35,22 +30,29 @@ env/
 *.swo
 *~
 
-# Environment variables
-.env
-.env.local
-
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+
+# Data / runtime
+data/index/
+data/test_vector_store/
+*.index
+*.faiss
+
+# Environment / secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log
-
-# Vector DB
-vectordb/
-*.index
-*.faiss
 
 # Temporary files
 tmp/
